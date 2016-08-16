@@ -27,6 +27,7 @@ type (
 		watched  map[string][]interface{}
 		watchers []string // paths we created watcher on
 		dirs     []string // dirs we are watching
+		closed   bool // when closed
 	}
 
 	// Called on file change directories won't recieve this callback
@@ -56,21 +57,21 @@ func NewWatcher() (*Watcher, error) {
 	w.watched = make(map[string][]interface{})
 	w.watchers = make([]string, 0)
 	w.dirs = make([]string, 0)
-	go w.Observe()
-
+	w.closed = false
+	go w.observe()
 	return w, nil
 }
 
 func (w *Watcher) Close() {
 	notify.Stop(w.fsEvent)
+	w.closed = true
 	close(w.fsEvent)
-	w.watched = nil
-	w.watchers = nil
-	w.dirs = nil
-	w.fsEvent = nil
 }
 
 func (w *Watcher) Watch(name string, cb interface{}) error {
+	if w.closed {
+		return errors.New("Watcher Closed")
+	}
 	if !filepath.IsAbs(name) {
 		var err error
 		name, err = filepath.Abs(name)
@@ -170,6 +171,9 @@ func (w *Watcher) flushDir(name string) {
 }
 
 func (w *Watcher) UnWatch(name string, cb interface{}) error {
+	if w.closed {
+		return errors.New("Watcher Closed")
+	}
 	if !filepath.IsAbs(name) {
 		var err error
 		name, err = filepath.Abs(name)
@@ -236,7 +240,7 @@ func (w *Watcher) removeDir(name string) {
 
 // Observe dispatches notifications received by the watcher. This function will
 // return when the watcher is closed.
-func (w *Watcher) Observe() {
+func (w *Watcher) observe() {
 	for {
 		select {
 		case ev, ok := <-w.fsEvent:
@@ -244,7 +248,6 @@ func (w *Watcher) Observe() {
 				return
 			}
 			func() {
-				// fmt.Println("fsEvent: ", ev)
 				w.Lock()
 				defer w.Unlock()
 				path := ev.Path()

@@ -36,7 +36,7 @@ func TestLoadUnLoadJSON(t *testing.T) {
 
 func TestWatch(t *testing.T) {
 	testFile := "testdata/Preferences.sublime-settings"
-	testData := []byte(`{"font_face": "test"}`)
+	testData := []byte(`{"font_face": "Monospace"}`)
 
 	set := text.NewSettings()
 	if err := LoadJSON(testFile, &set); err != nil {
@@ -53,7 +53,7 @@ func TestWatch(t *testing.T) {
 		t.Fatalf("Error writing to file %s: %s", testFile, err)
 	}
 	time.Sleep(100 * time.Millisecond)
-	if got, exp := set.Get("font_face").(string), "test"; got != exp {
+	if got, exp := set.Get("font_face").(string), "Monospace"; got != exp {
 		t.Errorf("Expected font_face %s, but got %s", exp, got)
 	}
 
